@@ -234,6 +234,8 @@ function buildRuneGrid(panelId) {
         slot.querySelector('.rune-slot-name').style.color = '';
       } else {
         state.builds[panelId][name] = parseInt(sel.value);
+        sel.style.display = 'block';
+        badge.style.opacity = '1';
         slot.classList.add('active');
       }
       renderResults(panelId);
