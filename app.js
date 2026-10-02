@@ -28,7 +28,7 @@ function pct(n) {
 }
 
 // ---- Simulation Engine ----
-function simulate(build, baseHP, baseAtk, eggPct, nestPct, constAtk, constHP) {
+function simulate(build, baseHP, baseAtk, eggPct, nestPct, constAtk, constHP, constCritRate, constCritDamage) {
   // 1. Collect all active rune level data
   const runeEntries = Object.entries(build).map(([name, level]) => ({
     name, level, data: getLevelData(name, level)
@@ -39,6 +39,11 @@ function simulate(build, baseHP, baseAtk, eggPct, nestPct, constAtk, constHP) {
   let attackPct = 0;
   let hpFlat = 0;
   let hpPct = 0;
+  let critChancePct = 0.03 + constCritRate/100; // in percent
+  let CritDamagePct = 0.05 + constCritDamage; // in percent
+
+  console.log("CritChance ", critChancePct);
+  console.log("CritDamage ", CritDamagePct);
 
   for (const { data } of runeEntries) {
     const freq = data.freq || '';
@@ -51,7 +56,15 @@ function simulate(build, baseHP, baseAtk, eggPct, nestPct, constAtk, constHP) {
     // Flat bonuses only apply for always-on runes
     if (isAlways) {
       if (data.attack) attackFlat += data.attack;
-      if (data.hp) hpFlat += data.hp;
+      if (data.hp) hpFlat += data.hp;      
+      if (data.crit_pct){
+        critChancePct += data.crit_pct;
+        console.log("adding crit rate", data.crit_pct);
+      }
+      if (data.crit){
+        CritDamagePct += data.crit;
+        console.log("adding crit damage", data.crit);
+      }
     }
   }
 
@@ -96,6 +109,15 @@ function simulate(build, baseHP, baseAtk, eggPct, nestPct, constAtk, constHP) {
     }
   }
 
+  // calc crit into avgAttackBonus
+
+  console.log("CritChance ", critChancePct);
+  console.log("CritDamage ", CritDamagePct);
+
+  let critDamage = Math.floor(avgAtkPerHit * CritDamagePct * critChancePct);
+  console.log("actual crit damage", critDamage);
+  avgAttackBonus += critDamage;
+
   // 6. Effective damage per attack (attack + procs)
   const totalDmgPerAtk = avgAtkPerHit + avgAttackBonus;
 
@@ -111,6 +133,10 @@ function simulate(build, baseHP, baseAtk, eggPct, nestPct, constAtk, constHP) {
   };
 }
 
+function simulateCrit() {
+
+}
+
 // ---- Results Renderer ----
 function getBaseStats() {
   return {
@@ -120,6 +146,8 @@ function getBaseStats() {
     nestPct: parseFloat(document.getElementById('nest-cosmetic').value) || 0,
     constAtk: parseFloat(document.getElementById('const-atk').value) || 0,
     constHP: parseFloat(document.getElementById('const-hp').value) || 0,
+    constCritRate: parseFloat(document.getElementById('const-crit-rate').value) || 0,
+    constCritDamage: parseFloat(document.getElementById('const-crit-dmg').value) || 0,
   };
 }
 
@@ -127,7 +155,7 @@ function renderResults(panelId) {
   const build = state.builds[panelId];
   const el = document.getElementById('results-' + panelId);
   const s = getBaseStats();
-  const sim = simulate(build, s.hp, s.atk, s.eggPct, s.nestPct, s.constAtk, s.constHP);
+  const sim = simulate(build, s.hp, s.atk, s.eggPct, s.nestPct, s.constAtk, s.constHP, s.constCritRate, s.constCritDamage);
 
   if (Object.keys(build).length === 0) {
     el.innerHTML = '<div class="results-empty">Select runes above to see stats</div>';
